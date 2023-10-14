@@ -1,11 +1,11 @@
-import React from "react";
-import { Button, Checkbox, Form, Input } from "antd";
+import React, { useState } from "react";
+import { Button, Checkbox, Form, Input, Modal } from "antd";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "@/config/firebase";
 import { useRouter } from "next/router";
+import { FirebaseError } from "firebase/app";
 
 type FieldType = {
-  name: string;
   email: string;
   password: string;
   remember: string;
@@ -13,6 +13,13 @@ type FieldType = {
 
 export default function Login() {
   const router = useRouter();
+  const [error, setError] = useState();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOk = () => {
+    setIsModalOpen(false);
+  };
+
   const onFinish = async (values: FieldType) => {
     console.log("Success:", values);
     try {
@@ -26,13 +33,19 @@ export default function Login() {
       await updateProfile(credential.user, { displayName: values.email });
       router.push("/");
     } catch (error) {
-      console.log("error : ", error);
+      if (error instanceof FirebaseError) {
+        console.log(error.code, error.message);
+        setIsModalOpen(true);
+        onFinishFailed(error.message);
+      }
     }
   };
 
   const onFinishFailed = (errorInfo: any) => {
     console.log("Failed:", errorInfo);
+    setError(errorInfo);
   };
+
   return (
     <div className="flex justify-center items-center">
       <Form
@@ -45,13 +58,6 @@ export default function Login() {
         onFinishFailed={onFinishFailed}
         autoComplete="off"
       >
-        <Form.Item<FieldType>
-          label="Name"
-          name="name"
-          rules={[{ required: true, message: "Please input your username!" }]}
-        >
-          <Input />
-        </Form.Item>
         <Form.Item<FieldType>
           label="Email"
           name="email"
@@ -82,6 +88,11 @@ export default function Login() {
           </Button>
         </Form.Item>
       </Form>
+      <Modal
+        title={<div className="text-red-300">{error}</div>}
+        open={isModalOpen}
+        onOk={handleOk}
+      ></Modal>
     </div>
   );
 }
